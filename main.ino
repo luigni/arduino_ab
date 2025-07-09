@@ -1,26 +1,26 @@
 
 
-Brazo* brazo = new Brazo();
+Brazo brazo;
 
 
 void setup() {
   Serial.begin(9600);
-  brazo->velH(1000);
-  brazo->velC(1000);
-  brazo->accH(1000);
-  brazo->accC(1000);
+  brazo.velH(1000);
+  brazo.velC(1000);
+  brazo.accH(1000);
+  brazo.accC(1000);
 }
 
 void loop() {
   // put your main code here, to run repeatedly:
-  
-  Serial.println("Inserte calculo si quiere calcular el angulo");
-  Serial.println("Inserte mover si quiere iniciar el movimiento del brazo");
+  while (!Serial) delay(1); // Espera que el puerto serie esté listo
+  Serial.println("Inserte movermanual si quiere calcular el angulo con coordenadas dichas");
   Serial.println("Inserte stop en cualquier momento para detener el brazo");
+  Serial.println("Inserte moverauto para iniciar el movimiento con un angulo de la muñeca");
   while(Serial.available() == 0) {}
   if (Serial.available() > 0) {
     String input = Serial.readString();
-    if (input == "calculo\n") {
+    if (input == "movermanual\n") {
       Serial.println("inserte el x");
       while(Serial.available() == 0) {}
       input = Serial.readString();
@@ -37,25 +37,65 @@ void loop() {
       while(Serial.available() == 0) {}
       input = Serial.readString();
       float largo2 = input.toInt();
-      brazo->angulos(largo1, largo2, px, py);
+      brazo.angulosM(largo1, largo2, px, py);
       Serial.print("angulo del hombro: ");
-      Serial.println(brazo->getHombro());
+      Serial.println(brazo.getHombro());
       Serial.print("angulo del codo: ");
-      Serial.println(brazo->getCodo());
+      Serial.println(brazo.getCodo());
       Serial.print("posición del brazo: ");
-      Serial.println(brazo->getBrazo());
+      Serial.println(brazo.getBrazo());
     }
-    if (input == "mover\n") {
-      brazo->mover();
+    if (input == "moverauto\n") {
+      Serial.println("inserte el angulo de la muñeca");
+      while(Serial.available() == 0) {}
+      input = Serial.readString();
+      float pm = input.toInt();
+      Serial.println("inserte el l1");
+      while(Serial.available() == 0) {}
+      input = Serial.readString();
+      float largo1 = input.toInt();
+      Serial.println("inserte el l2");
+      while(Serial.available() == 0) {}
+      input = Serial.readString();
+      float largo2 = input.toInt();
+      brazo.angulosA(largo1, largo2, pm);
+      Serial.print("angulo del hombro: ");
+      Serial.println(" grados");
+      Serial.println(brazo.getHombro());
+      Serial.print("angulo del codo: ");
+      Serial.println(" grados");
+      Serial.println(brazo.getCodo());
+      Serial.print("posición del brazo: ");
+      Serial.println(" cm");
+      Serial.println(brazo.getBrazo());
+      Serial.print("angulo de la muñeca: ");
+      Serial.println(" grados");
+      Serial.println(brazo.getMuneca());
+      brazo.mover();
+      delay(5000);
+    }
+    if (input == "auto2\n") {
+      brazo.angulosA(30.0, 30.0, -30.0);
+      Serial.print("angulo del hombro: ");
+      Serial.println(brazo.getHombro());
+      Serial.print("angulo del codo: ");
+      Serial.println(brazo.getCodo());
+      Serial.print("posición del brazo: ");
+      Serial.println(brazo.getBrazo());
+      Serial.print("angulo de la muñeca: ");
+      Serial.println(brazo.getMuneca());
+      brazo.mover();
+      delay(2000);
     }
     if(input == "stop\n"){
-      brazo->stop();
+      brazo.stop();
     }
     if (!stepperh.isRunning() && !stepperc.isRunning()) {
       delay(2000);
       Serial.println("Motor ha completado los pasos.");
-      brazo->inicio();
+      brazo.inicio();
     }
 
   }
 }
+ 
