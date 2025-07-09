@@ -1,5 +1,7 @@
 #include <AccelStepper.h>
 #include <cmath>
+#include <Wire.h>
+#include <Adafruit_VL53L0X.h>
 
 #define X_STEP_PIN 2
 #define X_DIR_PIN 5
@@ -9,10 +11,14 @@
 #define X_DIR_PIN_2 5
 #define Y_STEP_PIN_2 3
 #define Y_DIR_PIN_2 6
+
+// Crea una instancia del sensor
+
 AccelStepper stepperh(AccelStepper::DRIVER, X_STEP_PIN, X_DIR_PIN);
 AccelStepper stepperc(AccelStepper::DRIVER, Y_STEP_PIN, Y_DIR_PIN);
 AccelStepper stepper1(AccelStepper::DRIVER, X_STEP_PIN_2, X_DIR_PIN_2);
 AccelStepper stepper2(AccelStepper::DRIVER, Y_STEP_PIN_2, Y_DIR_PIN_2);
+
 
 class Brazo{
 
@@ -25,10 +31,12 @@ class Brazo{
   const float angporpaso = 0.1; //el angulo que se mueve un nema por cada paso
   const float cmporpaso = 1; // cuantos cm sube el brazo por cada paso de los nemas
   const float xH = 40; // cuantos cm puede subir el brazo
+  float posM; //angulo a mover de la muñeca vertical
   float posB; //posicion del brazo en cm
   float posH; //angulo a mover del hombro
   float posC; //angulo a mover del codo
-
+  Adafruit_VL53L0X lox; 
+  VL53L0X_RangingMeasurementData_t measure; 
   public:
   //valor del angulo del hombro
   float getHombro(){
@@ -38,10 +46,15 @@ class Brazo{
   float getCodo(){
     return posC;
   }
-  //valor del angulo del codo
+  //valor de la altura del brazo
   float getBrazo(){
     return posB;
   }
+  //valor del angulo de la muñeca
+  float getMuneca(){
+    return posM;
+  }
+  
   //se explica por si solo
   float pitagoras(float n1, float n2){
     return sqrt(pow(n1, 2)+ pow(n2, 2));
@@ -54,7 +67,75 @@ class Brazo{
   float leycos(float n1,float n2, float n3){
     return (180/PI)*(acos((pow(n1,2)+pow(n2,2)-pow(n3,2)) / (2*n1*n2)));
   }
-  void angulos(float l1, float l2, float x, float y){
+  bool iniciarSensorVL53L0X() {
+    Serial.println("Intentando iniciar sensor VL53L0X...");
+    if (!lox.begin()) {
+        Serial.println(F("¡Error! No se pudo iniciar el sensor VL53L0X."));
+        return false; // Retorna false si falla la inicialización
+    }
+    Serial.println("Sensor VL53L0X iniciado correctamente.");
+    return true; // Retorna true si la inicialización fue exitosa
+  }
+  float getD() {
+    float distancia_cm = -1.0; // Valor por defecto en caso de error
+
+    // Realiza una medición. El 'false' significa que no se imprimirá depuración por serial.
+    // La estructura 'measure' es un miembro de la clase, no una variable local de la función.
+    lox.rangingTest(&measure, false); 
+
+    // Verifica si la medición fue exitosa (el estado 4 significa "fuera de rango" o error)
+    if (measure.RangeStatus != 4) {
+        // Convierte la distancia de milímetros a centímetros
+        distancia_cm = (float)measure.RangeMilliMeter / 10.0; 
+    } else {
+        // Si hay un error, puedes imprimir un mensaje (opcional)
+        Serial.println("VL53L0X: Error al medir o fuera de rango.");
+    }
+    
+    return distancia_cm; // Devuelve el valor medido (o -1.0 si hubo error)
+}
+  //calcular angulos manualmente (coordenadas dichas)
+  void angulosM(float l1, float l2, float x, float y){
+    //angulo codo 
+    float d = pitagoras(x,yIdeal);  //distancia de hombro al punto
+    float angc = leycos(l1,l2,d); //angulo interior del triangulo entre l1 y l2
+    posC = 180 - angc;
+
+    //angulo vertical del hombro.
+    float angh = leycos(l1,d,l2); //angulo interior del triangulo entre l1 y d
+    float angb = atan2dgr(yIdeal,x); //angulo entre Py y Px
+    posH = angb-angh;
+
+    posB = y-yIdeal;
+  }
+  //calcular angulos automaticamente (angulo de la muñeca y laser)
+  void angulosA(float l1, float l2, float m){
+    //mover el servo al angulo (lo haré después)
+    posM = m;
+
+    //sacar la distancia entre la muñeca y el punto
+    iniciarSensorVL53L0X();
+    float r = getD();
+    Serial.print(r);
+    Serial.println(" cm");
+
+    //sacar coordenadas del punto (x,y) con el hombro como (0,0)
+    float alfa = (PI/180)*hombroI;
+    float l1x = (l1 * cos(alfa));
+    float l1y = (l1 * sin(alfa));
+    float beta = alfa+((PI/180)*codoI);
+    float l2x = (l2 * cos(beta));
+    float l2y = (l2 * sin(beta));
+    float gamma = beta+((PI/180)*m);
+    float rx = (r * cos(gamma));
+    float ry = (r * sin(gamma));
+    float x = l1x+l2x+rx;
+    float y = l1y+l2y+ry; 
+    Serial.print(x);
+    Serial.println(" cm");
+    Serial.print(y);
+    Serial.println(" cm");
+
     //angulo codo 
     float d = pitagoras(x,yIdeal);  //distancia de hombro al punto
     float angc = leycos(l1,l2,d); //angulo interior del triangulo entre l1 y l2
