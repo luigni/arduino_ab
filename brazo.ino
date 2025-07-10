@@ -291,6 +291,11 @@ class Brazo{
     munecar.write(90);
     gripper.write(180);
   }
+  void attachall(){ 
+    munecav.attach(SERVO_V);
+    munecar.attach(SERVO_R);
+    gripper.attach(SERVO_G);
+  }
   void mover(){
     //numero de pasos del brazo
     float npb = (posB-brazoI)/cmporpaso;
