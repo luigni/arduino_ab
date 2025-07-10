@@ -19,6 +19,8 @@ void loop() {
   Serial.println("Inserte movermanual si quiere calcular el angulo con coordenadas dichas");
   Serial.println("Inserte stop en cualquier momento para detener el brazo");
   Serial.println("Inserte moverauto para iniciar el movimiento con un angulo de la muñeca");
+  Serial.println("Inserte moverbrazo para insertar los angulos del brazo y moverlos ahí");
+  Serial.println("Inserte moververtical para insertar la posición que quiera subir el brazo (en cm de 0-40)");
   while(Serial.available() == 0) {}
   if (Serial.available() > 0) {
     String input = Serial.readString();
@@ -37,6 +39,31 @@ void loop() {
       Serial.print("angulo del codo: ");
       Serial.println(brazo.getCodo());
       Serial.print("posición del brazo: ");
+      Serial.println(brazo.getBrazo());
+    }
+    if (input == "moverbrazo\n") {
+      Serial.println("inserte el angulo del hombro");
+      while(Serial.available() == 0) {}
+      input = Serial.readString();
+      float h = input.toInt();
+      brazo.setHombro(h);
+      Serial.println("inserte el angulo del codo");
+      while(Serial.available() == 0) {}
+      input = Serial.readString();
+      float c = input.toInt();
+      brazo.setCodo(c);
+      brazo.moverB();
+      brazo.setBrazo(20);
+    }
+    if (input == "moververtical\n") {
+      Serial.println("inserte la altura donde quiere llevar el brazo");
+      while(Serial.available() == 0) {}
+      input = Serial.readString();
+      float altura = input.toInt();
+      brazo.setBrazo(altura);
+      brazo.moverV();
+      brazo.setHombro(-90);
+      brazo.setCodo(90);
       Serial.println(brazo.getBrazo());
     }
     if (input == "moverauto\n") {
@@ -85,11 +112,13 @@ void loop() {
       brazo.stop();
     }
     if (!stepperh.isRunning() && !stepperc.isRunning()) {
-      delay(2000);
+      delay(10000);
       Serial.println("Motor ha completado los pasos.");
       brazo.inicio();
     }
 
   }
 }
+ 
+
  
