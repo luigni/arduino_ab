@@ -32,7 +32,7 @@ class Brazo{
   const float yIdeal = -4; //cada objeto debe estar idealmente 4 cm por abajo del hombro
   const float hombroI = -90.0; //angulo inicial del hombro 
   const float codoI = 90.0; //angulo inicial del codo 
-  const float brazoI = 10; //punto inicia del brazo en cm
+  const float brazoI = 20; //punto inicia del brazo en cm
   const float angporpaso = 0.1; //el angulo que se mueve un nema por cada paso
   const float cmporpaso = 1; // cuantos cm sube el brazo por cada paso de los nemas
   const float xH = 40; // cuantos cm puede subir el brazo
@@ -63,7 +63,22 @@ class Brazo{
   float getMuneca(){
     return posM;
   }
-  
+  //valor del angulo del hombro
+  void setHombro(float pos){
+    posH = pos;
+  }
+  //valor del angulo del codo
+  void setCodo(float pos){
+    posC = pos;
+  }
+  //valor de la altura del brazo
+  void setBrazo(float pos){
+    posB = pos;
+  }
+  //valor del angulo de la muñeca
+  void setMuneca(float pos){
+    posM = pos;
+  }
   //se explica por si solo
   float pitagoras(float n1, float n2){
     return sqrt(pow(n1, 2)+ pow(n2, 2));
@@ -332,6 +347,45 @@ class Brazo{
     else{
       menos(abs(npc), stepperc);
       Serial.println(npc);
+    }
+  }
+  void moverB(){
+   //numero de angporpasos del hombro
+    float nph = (posH-hombroI)/angporpaso;
+    //numero de angporpasos del codo
+    float npc = (posC-codoI)/angporpaso;
+    //mover adelante o atras hombro
+    if (nph >= 0){
+      mas(abs(nph), stepperh);
+      Serial.println(nph);
+    }
+    else{
+      menos(abs(nph), stepperh);
+      Serial.println(nph);
+    }
+    //mover adelante o atras codo
+    if (npc >= 0){
+      mas(abs(npc), stepperc);
+      Serial.println(npc);
+    }
+    else{
+      menos(abs(npc), stepperc);
+      Serial.println(npc);
+    }
+  }
+  void moverV(){
+    //numero de pasos del brazo
+    float npb = (posB-brazoI)/cmporpaso;
+    //mover arriba o abajo el hombro
+    if (npb >= 0){
+      mas(abs(npb), stepper1);
+      mas(abs(npb), stepper2);
+      Serial.println(npb);
+    }
+    else{
+      menos(abs(npb), stepper1);
+      menos(abs(npb), stepper2);
+      Serial.println(npb);
     }
   }
   void stop(){
