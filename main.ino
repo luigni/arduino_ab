@@ -1,6 +1,7 @@
-
-
 Brazo brazo;
+#define SERVO_V 9
+#define SERVO_R 10
+#define SERVO_G 11
 
 
 void setup() {
@@ -9,6 +10,7 @@ void setup() {
   brazo.velC(1000);
   brazo.accH(1000);
   brazo.accC(1000);
+  brazo.attachall();
 }
 
 void loop() {
@@ -29,15 +31,7 @@ void loop() {
       while(Serial.available() == 0) {}
       input = Serial.readString();
       float py = input.toInt();
-      Serial.println("inserte el l1");
-      while(Serial.available() == 0) {}
-      input = Serial.readString();
-      float largo1 = input.toInt();
-      Serial.println("inserte el l2");
-      while(Serial.available() == 0) {}
-      input = Serial.readString();
-      float largo2 = input.toInt();
-      brazo.angulosM(largo1, largo2, px, py);
+      brazo.angulosM(22.0, 19.0, px, py);
       Serial.print("angulo del hombro: ");
       Serial.println(brazo.getHombro());
       Serial.print("angulo del codo: ");
@@ -75,7 +69,7 @@ void loop() {
       delay(5000);
     }
     if (input == "auto2\n") {
-      brazo.angulosA(30.0, 30.0, -30.0);
+      brazo.angulosA(22.0, 19.0, 0);
       Serial.print("angulo del hombro: ");
       Serial.println(brazo.getHombro());
       Serial.print("angulo del codo: ");
