@@ -2,6 +2,7 @@
 #include <cmath>
 #include <Wire.h>
 #include <Adafruit_VL53L0X.h>
+#include <Servo.h>
 
 #define X_STEP_PIN 2
 #define X_DIR_PIN 5
@@ -11,6 +12,10 @@
 #define X_DIR_PIN_2 5
 #define Y_STEP_PIN_2 3
 #define Y_DIR_PIN_2 6
+#define SERVO_V 9
+#define SERVO_R 10
+#define SERVO_G 11
+
 
 // Crea una instancia del sensor
 
@@ -25,17 +30,21 @@ class Brazo{
   private:
   
   const float yIdeal = -4; //cada objeto debe estar idealmente 4 cm por abajo del hombro
-  const float hombroI = -60.0; //angulo inicial del hombro
-  const float codoI = 90.0; //angulo inicial del codo
-  const float brazoI = 20; //punto inicia del brazo
+  const float hombroI = -90.0; //angulo inicial del hombro 
+  const float codoI = 90.0; //angulo inicial del codo 
+  const float brazoI = 10; //punto inicia del brazo en cm
   const float angporpaso = 0.1; //el angulo que se mueve un nema por cada paso
   const float cmporpaso = 1; // cuantos cm sube el brazo por cada paso de los nemas
   const float xH = 40; // cuantos cm puede subir el brazo
+  const float dML = 17; // distancia (en centimetros) entre la base de la garra y el laser
   float posM; //angulo a mover de la muñeca vertical
   float posB; //posicion del brazo en cm
   float posH; //angulo a mover del hombro
   float posC; //angulo a mover del codo
   Adafruit_VL53L0X lox; 
+  Servo munecav;
+  Servo munecar;
+  Servo gripper; 
   VL53L0X_RangingMeasurementData_t measure; 
   public:
   //valor del angulo del hombro
@@ -96,22 +105,51 @@ class Brazo{
 }
   //calcular angulos manualmente (coordenadas dichas)
   void angulosM(float l1, float l2, float x, float y){
-    //angulo codo 
-    float d = pitagoras(x,yIdeal);  //distancia de hombro al punto
-    float angc = leycos(l1,l2,d); //angulo interior del triangulo entre l1 y l2
-    posC = 180 - angc;
+    //posición ideal del brazo
+    posB = (y-yIdeal)+brazoI;
+    //si es que el brazo está más abajo de su altura máxima
+    if (posB <= xH){
+      //angulo codo 
+      float d = pitagoras(x,yIdeal);  //distancia de hombro al punto
+      float angc = leycos(l1,l2,d); //angulo interior del triangulo entre l1 y l2
+      posC = 180 - angc;
 
-    //angulo vertical del hombro.
-    float angh = leycos(l1,d,l2); //angulo interior del triangulo entre l1 y d
-    float angb = atan2dgr(yIdeal,x); //angulo entre Py y Px
-    posH = angb-angh;
+      //angulo vertical del hombro.
+      float angh = leycos(l1,d,l2); //angulo interior del triangulo entre l1 y d
+      float angb = atan2dgr(yIdeal,x); //angulo entre Py y Px
+      posH = angb-angh;
+    }
+    //si es que el brazo está más arriba de su altura máxima
+    else if (posB >= xH){
+      posB = xH;
+      float d = pitagoras(x,(y-xH));  //distancia de hombro al punto
+      float angc = leycos(l1,l2,d); //angulo interior del triangulo entre l1 y l2
+      posC = -(180 - angc);
 
-    posB = y-yIdeal;
+      //angulo vertical del hombro.
+      float angh = leycos(l1,d,l2); //angulo interior del triangulo entre l1 y d
+      float angb = atan2dgr((y-xH),x); //angulo entre Py y Px
+      posH = -(angb-angh);
+    }
+    //si es que el brazo está más abajo de la posición posible
+    else if (posB <= 0){
+      posB = 10;
+      float d = pitagoras(x,(y-xH));  //distancia de hombro al punto
+      float angc = leycos(l1,l2,d); //angulo interior del triangulo entre l1 y l2
+      posC = -(180 - angc);
+
+      //angulo vertical del hombro.
+      float angh = leycos(l1,d,l2); //angulo interior del triangulo entre l1 y d
+      float angb = atan2dgr((y-xH),x); //angulo entre Py y Px
+      posH = -(angb-angh);
+    }
   }
   //calcular angulos automaticamente (angulo de la muñeca y laser)
   void angulosA(float l1, float l2, float m){
     //mover el servo al angulo (lo haré después)
     posM = m;
+    muneca();
+
 
     //sacar la distancia entre la muñeca y el punto
     iniciarSensorVL53L0X();
@@ -136,17 +174,44 @@ class Brazo{
     Serial.print(y);
     Serial.println(" cm");
 
-    //angulo codo 
-    float d = pitagoras(x,yIdeal);  //distancia de hombro al punto
-    float angc = leycos(l1,l2,d); //angulo interior del triangulo entre l1 y l2
-    posC = 180 - angc;
+    //posición ideal del brazo
+    posB = (y-yIdeal)+brazoI;
+    //si es que el brazo está más abajo de su altura máxima
+    if (posB <= xH){
+      //angulo codo 
+      float d = pitagoras(x,yIdeal);  //distancia de hombro al punto
+      float angc = leycos(l1,l2,d); //angulo interior del triangulo entre l1 y l2
+      posC = 180 - angc;
 
-    //angulo vertical del hombro.
-    float angh = leycos(l1,d,l2); //angulo interior del triangulo entre l1 y d
-    float angb = atan2dgr(yIdeal,x); //angulo entre Py y Px
-    posH = angb-angh;
+      //angulo vertical del hombro.
+      float angh = leycos(l1,d,l2); //angulo interior del triangulo entre l1 y d
+      float angb = atan2dgr(yIdeal,x); //angulo entre Py y Px
+      posH = angb-angh;
+    }
+    //si es que el brazo está más arriba de su altura máxima
+    else if (posB >= xH){
+      posB = xH;
+      float d = pitagoras(x,(y-xH));  //distancia de hombro al punto
+      float angc = leycos(l1,l2,d); //angulo interior del triangulo entre l1 y l2
+      posC = -(180 - angc);
 
-    posB = y-yIdeal;
+      //angulo vertical del hombro.
+      float angh = leycos(l1,d,l2); //angulo interior del triangulo entre l1 y d
+      float angb = atan2dgr((y-xH),x); //angulo entre Py y Px
+      posH = -(angb-angh);
+    }
+    //si es que el brazo está más abajo de la posición posible
+    else if (posB <= 0){
+      posB = 10;
+      float d = pitagoras(x,(y-xH));  //distancia de hombro al punto
+      float angc = leycos(l1,l2,d); //angulo interior del triangulo entre l1 y l2
+      posC = -(180 - angc);
+
+      //angulo vertical del hombro.
+      float angh = leycos(l1,d,l2); //angulo interior del triangulo entre l1 y d
+      float angb = atan2dgr((y-xH),x); //angulo entre Py y Px
+      posH = -(angb-angh);
+    }
   }
   void velH(int valv){
 	  stepperh.setMaxSpeed(valv); 
@@ -221,7 +286,11 @@ class Brazo{
       Serial.println(npb);
     }
   }
-  
+  void muneca(){
+    munecav.write(90);
+    munecar.write(90);
+    gripper.write(180);
+  }
   void mover(){
     //numero de pasos del brazo
     float npb = (posB-brazoI)/cmporpaso;
